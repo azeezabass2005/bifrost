@@ -1,8 +1,10 @@
-# Bifrost — Product Requirements Document
+# Bifrost - Product Requirements Document
 
 ## Overview
 
-Bifrost is a multithreaded HTTP service built in Rust that searches for and compares product data across multiple e-commerce sites. A client submits a product query — optionally specifying which sites to search — and Bifrost fans out scrape jobs to all target sites concurrently. Each site's results are parsed, normalized, and returned as a comparative response highlighting where the product is cheapest, best-reviewed, available, deliverable, and more.
+Bifrost is a multithreaded HTTP service written in Rust that searches and compares product data across multiple e-commerce sites.
+
+A client submits a product query and can optionally provide a specific site list. Bifrost then fans out scrape jobs to all target sites concurrently, parses and normalizes each result, and returns a comparison showing where the product is cheapest, best-reviewed, in stock, and deliverable.
 
 When no sites are specified, Bifrost searches a configurable set of default e-commerce sites.
 
@@ -25,7 +27,7 @@ When no sites are specified, Bifrost searches a configurable set of default e-co
 
 ## Functional Requirements
 
-### FR-1 — Product Search API
+### FR-1 - Product Search API
 
 | Field | Detail |
 |---|---|
@@ -53,93 +55,93 @@ Example request using defaults:
 }
 ```
 
-### FR-2 — Default Sites
+### FR-2 - Default Sites
 
 - Bifrost ships with a configurable list of default e-commerce sites (e.g., Amazon, Best Buy, Walmart, Target, eBay).
 - The list is defined in configuration and can be overridden via environment variable.
 - When a request omits the `sites` field, all default sites are searched.
 
-### FR-3 — Job Result Retrieval
+### FR-3 - Job Result Retrieval
 
 | Field | Detail |
 |---|---|
 | **Endpoint** | `GET /search/:job_id` |
 | **Response** | `200 OK` with the full comparison result when all sites have been scraped; `202 Accepted` with partial results while some sites are still pending; `500` if the entire job failed. |
 
-### FR-4 — Comparative Response
+### FR-4 - Comparative Response
 
 The response groups results by site and includes a `comparison` summary that highlights:
 
-- **cheapest** — the site with the lowest price.
-- **most_expensive** — the site with the highest price.
-- **best_rated** — the site where the product has the highest rating or most reviews.
-- **available_at** — list of sites where the product is in stock.
-- **deliverable_to** — list of sites that deliver to the user's location (if `location` was provided).
-- **cheapest_delivery** — the site with the lowest delivery cost (if delivery info is available).
+- **cheapest** - the site with the lowest price.
+- **most_expensive** - the site with the highest price.
+- **best_rated** - the site where the product has the highest rating or most reviews.
+- **available_at** - list of sites where the product is in stock.
+- **deliverable_to** - list of sites that deliver to the user's location (if `location` was provided).
+- **cheapest_delivery** - the site with the lowest delivery cost (if delivery info is available).
 
-### FR-5 — Structured Product Data (per site)
+### FR-5 - Structured Product Data (per site)
 
 Each site result returns a `SiteResult` containing:
 
-- `site: String` — domain name of the source site.
-- `product_name: String` — product title as listed on that site.
+- `site: String` - domain name of the source site.
+- `product_name: String` - product title as listed on that site.
 - `price: Option<f64>`
 - `currency: Option<String>`
 - `rating: Option<f64>`
 - `review_count: Option<u32>`
-- `availability: Option<String>` — e.g., "In Stock", "Out of Stock", "Pre-order".
-- `delivery_available: Option<bool>` — whether the site delivers to the requested location.
-- `delivery_cost: Option<f64>` — shipping cost, if available.
-- `delivery_estimate: Option<String>` — e.g., "2-3 business days".
-- `product_url: String` — direct link to the product page.
+- `availability: Option<String>` - e.g., "In Stock", "Out of Stock", "Pre-order".
+- `delivery_available: Option<bool>` - whether the site delivers to the requested location.
+- `delivery_cost: Option<f64>` - shipping cost, if available.
+- `delivery_estimate: Option<String>` - e.g., "2-3 business days".
+- `product_url: String` - direct link to the product page.
 - `scraped_at: DateTime<Utc>`
 
-### FR-6 — Worker Pool
+### FR-6 - Worker Pool
 
 - A configurable number of async worker tasks consume jobs from an internal channel.
-- For a single search request, one job per target site is dispatched — all run concurrently.
+- For a single search request, one job per target site is dispatched - all run concurrently.
 - Workers use `reqwest` to fetch pages and `scraper` to parse HTML.
 - Each worker runs on the tokio runtime and communicates results back via channels.
 
-### FR-7 — Site-Specific Parsers
+### FR-7 - Site-Specific Parsers
 
 - Each supported site has a dedicated parser module that knows the HTML structure / CSS selectors for that site.
 - Parsers implement a common trait (`SiteParser`) so new sites can be added without touching the worker or API layers.
 - A fallback generic parser attempts extraction using common e-commerce markup patterns (schema.org, Open Graph, meta tags).
 
-### FR-8 — Rate Limiting
+### FR-8 - Rate Limiting
 
 - Per-domain rate limiting to avoid overwhelming target sites.
 - Configurable requests-per-second per domain.
 - Requests that exceed the limit are queued, not rejected.
 
-### FR-9 — Retry Logic
+### FR-9 - Retry Logic
 
 - Retries on transient HTTP errors (5xx, timeouts, connection resets).
 - Exponential backoff with jitter, configurable max retries (default: 3).
-- A failed site does not block results from other sites — partial results are returned.
+- A failed site does not block results from other sites - partial results are returned.
 
-### FR-10 — In-Memory Cache
+### FR-10 - In-Memory Cache
 
 - Cache keyed by normalized query (product + sorted site list + location).
 - TTL-based eviction (default: 15 minutes, configurable).
 - A cache hit on a fresh entry skips the worker pool entirely and returns the full comparison result.
 
-### FR-11 — Metrics Endpoint
+### FR-11 - Metrics Endpoint
 
 | Field | Detail |
 |---|---|
 | **Endpoint** | `GET /metrics` |
 | **Data** | Total searches, active jobs, cache hits/misses, error counts by site, average scrape latency per site, per-domain request counts. |
 
-### FR-12 — Health Check
+### FR-12 - Health Check
 
 | Field | Detail |
 |---|---|
 | **Endpoint** | `GET /health` |
 | **Response** | `200 OK` with `{ "status": "ok" }`. |
 
-### FR-13 — List Default Sites
+### FR-13 - List Default Sites
 
 | Field | Detail |
 |---|---|
@@ -150,28 +152,28 @@ Each site result returns a `SiteResult` containing:
 
 ## Non-Functional Requirements
 
-### NFR-1 — Performance
+### NFR-1 - Performance
 
 - Target p99 latency under 2 seconds for cached responses.
 - Support at least 100 concurrent in-flight scrape jobs across all searches.
 - Fan-out scrapes to all target sites in parallel; total latency is bounded by the slowest site (plus overhead), not the sum.
 
-### NFR-2 — Partial Results
+### NFR-2 - Partial Results
 
 - If some sites succeed and others fail or time out, the API returns the successful results plus error details for the failed sites. It does not wait indefinitely or fail the entire request.
 
-### NFR-3 — Observability
+### NFR-3 - Observability
 
 - Structured logging via `tracing` (JSON output in release, pretty-print in dev).
 - Span-per-request and span-per-site with `trace_id` propagation.
 
-### NFR-4 — Error Handling
+### NFR-4 - Error Handling
 
 - All public API errors return consistent JSON error bodies: `{ "error": "...", "detail": "..." }`.
 - Per-site errors are reported inline in the response, not as HTTP-level failures.
 - Internal panics are caught; the service stays up.
 
-### NFR-5 — Configuration
+### NFR-5 - Configuration
 
 All tunable values configurable via environment variables with sensible defaults:
 
@@ -240,24 +242,24 @@ All tunable values configurable via environment variables with sensible defaults
 
 ## Core Concepts Demonstrated
 
-- **Async/Await** — all I/O is non-blocking on the tokio runtime.
-- **Concurrency via channels and worker pools** — `tokio::sync::mpsc` for job dispatch, `tokio::sync::oneshot` for per-job result delivery, fan-out pattern for multi-site search.
-- **HTTP server + client** — axum serves the API; reqwest acts as the scraping client.
-- **Error handling across network boundaries** — custom error types map cleanly to HTTP status codes; per-site errors don't fail the whole request.
-- **Caching** — `DashMap` or `tokio::sync::RwLock<HashMap>` with TTL-based eviction.
-- **Structured logging** — `tracing` spans and events for every request, per-site scrape, and aggregation step.
-- **Benchmarking** — criterion benchmarks for parsing, aggregation, and cache operations.
+- **Async/Await** - all I/O is non-blocking on the tokio runtime.
+- **Concurrency via channels and worker pools** - `tokio::sync::mpsc` for job dispatch, `tokio::sync::oneshot` for per-job result delivery, fan-out pattern for multi-site search.
+- **HTTP server + client** - axum serves the API; reqwest acts as the scraping client.
+- **Error handling across network boundaries** - custom error types map cleanly to HTTP status codes; per-site errors don't fail the whole request.
+- **Caching** - `DashMap` or `tokio::sync::RwLock<HashMap>` with TTL-based eviction.
+- **Structured logging** - `tracing` spans and events for every request, per-site scrape, and aggregation step.
+- **Benchmarking** - criterion benchmarks for parsing, aggregation, and cache operations.
 
 ---
 
 ## Milestones
 
-1. **M1 — Skeleton** — Axum server boots, health and `/sites` endpoints respond, tracing configured.
-2. **M2 — Worker Pool & Fan-out** — mpsc channel, N worker tasks, fan-out of one job per site.
-3. **M3 — Site Parsers** — `SiteParser` trait, first parser (e.g., generic/schema.org), product field extraction.
-4. **M4 — Result Aggregation** — Collect per-site results, build comparison summary (cheapest, best-rated, etc.).
-5. **M5 — Delivery & Location** — Parse delivery cost/availability, filter by user location.
-6. **M6 — Cache** — In-memory cache with TTL eviction; cache-hit path wired into API.
-7. **M7 — Rate Limiting & Retries** — Per-domain rate limiter, exponential backoff, partial-result handling.
-8. **M8 — Metrics & Observability** — `/metrics` endpoint, structured tracing spans per site.
-9. **M9 — Polish** — Error responses, configuration, integration tests, benchmarks.
+1. **M1 - Skeleton** - Axum server boots, health and `/sites` endpoints respond, tracing configured.
+2. **M2 - Worker Pool & Fan-out** - mpsc channel, N worker tasks, fan-out of one job per site.
+3. **M3 - Site Parsers** - `SiteParser` trait, first parser (e.g., generic/schema.org), product field extraction.
+4. **M4 - Result Aggregation** - Collect per-site results, build comparison summary (cheapest, best-rated, etc.).
+5. **M5 - Delivery & Location** - Parse delivery cost/availability, filter by user location.
+6. **M6 - Cache** - In-memory cache with TTL eviction; cache-hit path wired into API.
+7. **M7 - Rate Limiting & Retries** - Per-domain rate limiter, exponential backoff, partial-result handling.
+8. **M8 - Metrics & Observability** - `/metrics` endpoint, structured tracing spans per site.
+9. **M9 - Polish** - Error responses, configuration, integration tests, benchmarks.

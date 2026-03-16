@@ -1,12 +1,14 @@
 # Bifrost
 
-A multithreaded HTTP service built in Rust that searches for and compares product data across multiple e-commerce sites. Submit a product name, get back a comparison of prices, reviews, ratings, availability, and delivery info from every site — with highlights like "cheapest," "best-reviewed," and "deliverable to your location."
+A multithreaded HTTP service in Rust for searching and comparing product data across multiple e-commerce sites.
+
+Send a product name and Bifrost returns a side-by-side view of price, ratings, reviews, availability, and delivery details, including highlights such as cheapest option, best-reviewed listing, and deliverability to your location.
 
 ## How It Works
 
 1. A client sends a `POST /search` request with a product name and (optionally) a list of sites and a location.
 2. If no sites are specified, Bifrost searches a configurable set of **default e-commerce sites** (Amazon, Best Buy, Walmart, Target, eBay).
-3. The API checks the in-memory cache — if a fresh result exists for this query, it returns immediately.
+3. The API checks the in-memory cache - if a fresh result exists for this query, it returns immediately.
 4. Otherwise, one scrape job per target site is fanned out to a pool of async workers via an mpsc channel. All sites are scraped concurrently.
 5. Each worker fetches the page with `reqwest`, runs the site-specific parser (built on `scraper`), and extracts structured product data including delivery info.
 6. A result aggregator collects all site results, builds a comparison summary, caches it, and returns the response.
@@ -100,10 +102,10 @@ Both `sites` and `location` are optional. Omit `sites` to search all defaults:
 ```
 
 **Responses:**
-- `200 OK` — cached comparison returned immediately.
-- `202 Accepted` — job queued; poll with the returned `job_id`.
-- `400 Bad Request` — malformed input.
-- `429 Too Many Requests` — rate limit exceeded.
+- `200 OK`: cached comparison returned immediately.
+- `202 Accepted`: job queued; poll with the returned `job_id`.
+- `400 Bad Request`: malformed input.
+- `429 Too Many Requests`: rate limit exceeded.
 
 ### Get Search Result
 
@@ -112,9 +114,9 @@ GET /search/:job_id
 ```
 
 **Responses:**
-- `200 OK` — all sites scraped, full comparison returned.
-- `202 Accepted` — still in progress (partial results included).
-- `500 Internal Server Error` — entire job failed.
+- `200 OK`: all sites scraped, full comparison returned.
+- `202 Accepted`: still in progress (partial results included).
+- `500 Internal Server Error`: entire job failed.
 
 ### Response Shape
 
@@ -206,32 +208,38 @@ Returns throughput, error rates per site, cache hit/miss counts, active job coun
 
 ```
 src/
-  main.rs            — entry point, server bootstrap
-  config.rs          — environment-based configuration, default sites
-  error.rs           — unified error types
-  models.rs          — Product, SiteResult, Comparison, request/response types
-  api/               — axum routes and handlers
-  worker/            — scraper worker pool, fan-out job dispatch
-  parsers/           — site-specific HTML parsers (SiteParser trait)
-    mod.rs           — trait definition and parser registry
-    amazon.rs        — Amazon parser
-    bestbuy.rs       — Best Buy parser
-    generic.rs       — fallback parser (schema.org, Open Graph, meta tags)
-  aggregator/        — collects site results, builds comparison summary
-  cache/             — in-memory TTL cache
-  rate_limiter/      — per-domain rate limiting
-  metrics/           — counters and metrics collection
+  main.rs               - entry point, server bootstrap
+  config.rs             - environment-based configuration, default sites
+  error.rs              - unified error types
+  models.rs             - Product, SiteResult, Comparison, request/response types
+  api/
+    mod.rs              - axum routes and handlers
+  worker/
+    mod.rs              - scraper worker pool, fan-out job dispatch
+  parsers/
+    mod.rs              - parser trait definition and parser registry
+    amazon.rs           - Amazon parser
+    bestbuy.rs          - Best Buy parser
+    generic.rs          - fallback parser (schema.org, Open Graph, meta tags)
+  aggregator/
+    mod.rs              - collects site results and builds comparison summary
+  cache/
+    mod.rs              - in-memory TTL cache
+  rate_limiter/
+    mod.rs              - per-domain rate limiting
+  metrics/
+    mod.rs              - counters and metrics collection
 ```
 
 ## Core Concepts
 
-- **Async/Await** — all I/O is non-blocking on the tokio runtime.
-- **Concurrency** — `tokio::sync::mpsc` for job dispatch, `tokio::sync::oneshot` for per-job results, fan-out pattern to scrape all sites in parallel.
-- **HTTP server + client** — axum serves the API; reqwest fetches target pages.
-- **Error handling** — per-site errors are isolated; one failing site never blocks results from others.
-- **Caching** — in-memory cache with TTL-based eviction, keyed by normalized query.
-- **Structured logging** — `tracing` spans per request and per site for observability.
-- **Benchmarking** — criterion benchmarks for parsing, aggregation, and cache performance.
+- **Async/Await** - all I/O is non-blocking on the tokio runtime.
+- **Concurrency** - `tokio::sync::mpsc` for job dispatch, `tokio::sync::oneshot` for per-job results, fan-out pattern to scrape all sites in parallel.
+- **HTTP server + client** - axum serves the API; reqwest fetches target pages.
+- **Error handling** - per-site errors are isolated; one failing site never blocks results from others.
+- **Caching** - in-memory cache with TTL-based eviction, keyed by normalized query.
+- **Structured logging** - `tracing` spans per request and per site for observability.
+- **Benchmarking** - criterion benchmarks for parsing, aggregation, and cache performance.
 
 ## Running Tests
 
