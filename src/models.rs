@@ -1,4 +1,3 @@
-use axum::{Json, http::StatusCode, response::{IntoResponse, Response}};
 use serde::{Deserialize, Serialize};
 
 /// The structure of the search request body
@@ -22,18 +21,13 @@ impl SearchResponseBody {
     }
 }
 
-impl IntoResponse for SearchResponseBody {
-    fn into_response(self) -> Response {
-        (StatusCode::OK, Json(self)).into_response()
-    }
-}
-
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Message {
     pub message: String
 }
 
 /// A single product listing
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ListingResult {
     vendor: Option<String>,
     link: String,
@@ -44,11 +38,13 @@ pub struct ListingResult {
 }
 
 /// The Centralized/Generic structure for all site results
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SiteResult {
     results: Vec<ListingResult>
 }
 
 /// The Centralized/Generic structure for any error encountered on all site
+#[derive(Serialize, Deserialize, Debug)]
 pub enum SiteError {
     ProductNotFound,
     ScrapingNotAllowed,
