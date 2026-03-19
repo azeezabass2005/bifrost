@@ -32,3 +32,25 @@ impl IntoResponse for SearchResponseBody {
 pub struct Message {
     pub message: String
 }
+
+/// A single product listing
+pub struct ListingResult {
+    vendor: Option<String>,
+    link: String,
+    description: String,
+    good_reviews: Vec<String>,
+    bad_reviews: Vec<String>,
+    price: String,
+}
+
+/// The Centralized/Generic structure for all site results
+pub struct SiteResult {
+    results: Vec<ListingResult>
+}
+
+/// The Centralized/Generic structure for any error encountered on all site
+pub enum SiteError {
+    ProductNotFound,
+    ScrapingNotAllowed,
+    SiteNotAvailable
+}
